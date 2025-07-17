@@ -1,0 +1,2 @@
+KEY         = "IiPTCvu1AAziLvdusHHkCus5NCpwU0mQ0vMcZnRLwZeFNCA3ODdEIgHYLrDsPYij"
+SECRET      = "sUdrgJMQ15FceuPSLjc5NkKY951iWTUvBJmOGUgmhPln05f3jHHEBfnKPuRLnEbe"
