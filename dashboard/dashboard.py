@@ -86,6 +86,18 @@ class TradingDashboard:
         # Detecta o modo do dashboard
         self.mode = get_dashboard_mode()
         
+        # Inicializa session state para cache de dados
+        if 'cached_data' not in st.session_state:
+            st.session_state.cached_data = {}
+        if 'cached_matriz_stoch' not in st.session_state:
+            st.session_state.cached_matriz_stoch = {}
+        if 'data_timestamp' not in st.session_state:
+            st.session_state.data_timestamp = None
+        if 'last_config' not in st.session_state:
+            st.session_state.last_config = {}
+        if 'updating_data' not in st.session_state:
+            st.session_state.updating_data = False
+        
         # Configurar página
         page_title = self.config['title']
         if self.mode == "all_pairs":
@@ -102,6 +114,37 @@ class TradingDashboard:
         # Mostra o modo atual
         self.show_mode_info()
     
+    def needs_data_refresh(self, trading_pairs, intervals, brick_size, use_atr, atr_period, force_refresh):
+        """Verifica se é necessário atualizar os dados."""
+        current_config = {
+            'trading_pairs': trading_pairs,
+            'intervals': intervals,
+            'brick_size': brick_size,
+            'use_atr': use_atr,
+            'atr_period': atr_period,
+            'mode': self.mode
+        }
+        
+        # Se força refresh, sempre atualizar
+        if force_refresh:
+            return True
+        
+        # Se não há dados em cache, sempre atualizar
+        if not st.session_state.cached_data or not st.session_state.cached_matriz_stoch:
+            return True
+        
+        # Se configuração mudou, atualizar
+        if st.session_state.last_config != current_config:
+            return True
+        
+        # Se passou mais de 10 minutos, atualizar
+        if st.session_state.data_timestamp:
+            time_diff = (datetime.now() - st.session_state.data_timestamp).total_seconds()
+            if time_diff > 600:  # 10 minutes
+                return True
+        
+        return False
+    
     def show_mode_info(self):
         """Mostra informações sobre o modo atual."""
         if self.mode == "all_pairs":
@@ -110,6 +153,67 @@ class TradingDashboard:
             st.info("🧪 **Modo: TESTE** - Usando apenas 5 pares para desenvolvimento")
         else:
             st.info("📈 **Modo: PADRÃO** - Usando pares selecionados")
+        
+        # Mostra informações do cache
+        if st.session_state.updating_data:
+            st.warning("🔄 **Atualizando dados** - Interface permanece funcional com dados anteriores")
+        elif st.session_state.data_timestamp:
+            cache_age = (datetime.now() - st.session_state.data_timestamp).total_seconds() / 60
+            if cache_age < 1:
+                st.success(f"💾 **Cache:** Dados atualizados há {cache_age:.0f} segundos")
+            else:
+                st.info(f"💾 **Cache:** Dados atualizados há {cache_age:.1f} minutos")
+        else:
+            st.warning("💾 **Cache:** Nenhum dado em cache")
+    
+    def needs_data_refresh(self, trading_pairs, intervals, brick_size, use_atr, atr_period, force_refresh):
+        """Verifica se é necessário atualizar os dados."""
+        current_config = {
+            'trading_pairs': trading_pairs,
+            'intervals': intervals,
+            'brick_size': brick_size,
+            'use_atr': use_atr,
+            'atr_period': atr_period,
+            'mode': self.mode
+        }
+        
+        # Se força refresh, sempre atualizar
+        if force_refresh:
+            return True
+        
+        # Se não há dados em cache, sempre atualizar
+        if not st.session_state.cached_data or not st.session_state.cached_matriz_stoch:
+            return True
+        
+        # Se configuração mudou, atualizar
+        if st.session_state.last_config != current_config:
+            return True
+        
+        # Se passou mais de 10 minutos, atualizar
+        if st.session_state.data_timestamp:
+            time_diff = (datetime.now() - st.session_state.data_timestamp).total_seconds()
+            if time_diff > 600:  # 10 minutes
+                return True
+        
+        return False
+    
+    def cache_data(self, trading_pairs, intervals, brick_size, use_atr, atr_period, all_data, matriz_stoch):
+        """Armazena dados no cache da sessão."""
+        st.session_state.cached_data = all_data
+        st.session_state.cached_matriz_stoch = matriz_stoch
+        st.session_state.data_timestamp = datetime.now()
+        st.session_state.last_config = {
+            'trading_pairs': trading_pairs,
+            'intervals': intervals,
+            'brick_size': brick_size,
+            'use_atr': use_atr,
+            'atr_period': atr_period,
+            'mode': self.mode
+        }
+    
+    def get_cached_data(self):
+        """Recupera dados do cache da sessão."""
+        return st.session_state.cached_data, st.session_state.cached_matriz_stoch
     
     def render_sidebar(self):
         """Renderiza a barra lateral com controles."""
@@ -153,14 +257,9 @@ class TradingDashboard:
         force_refresh = st.sidebar.button("🔄 Forçar Atualização dos Dados", 
                                         help="Força busca de novos dados da API, ignorando cache válido")
         
-        # Checkbox para auto-refresh
-        auto_refresh = st.sidebar.checkbox("🔄 Auto-refresh (30s)", value=False,
-                                         help="Atualiza automaticamente a cada 30 segundos")
-        
-        if auto_refresh:
-            st.sidebar.warning("⚠️ Auto-refresh ativo - dados sendo atualizados automaticamente")
-            time.sleep(30)  # Aguarda 30 segundos
-            st.experimental_rerun()  # Recarrega a página
+        # Informação sobre auto-refresh
+        st.sidebar.info("� Os filtros são aplicados instantaneamente usando cache")
+        st.sidebar.info("🔄 Use 'Forçar Atualização' para buscar dados mais recentes")
         
         # Seção de timeframes
         st.sidebar.subheader("⏰ Timeframes")
@@ -318,7 +417,38 @@ class TradingDashboard:
         )
         
         # Cache controls
-        st.sidebar.subheader("💾 Cache")
+        st.sidebar.subheader("💾 Cache de Sessão")
+        
+        # Informações do cache
+        if st.session_state.updating_data:
+            st.sidebar.warning("🔄 Atualizando dados...")
+            st.sidebar.info("⚡ Interface continua funcional")
+        elif st.session_state.data_timestamp:
+            cache_age = (datetime.now() - st.session_state.data_timestamp).total_seconds() / 60
+            cached_pairs = len(st.session_state.cached_data) if st.session_state.cached_data else 0
+            st.sidebar.success(f"✅ Cache ativo: {cached_pairs} pares")
+            
+            if cache_age < 5:
+                st.sidebar.success(f"⚡ Dados atuais: {cache_age:.1f} min")
+            elif cache_age < 30:
+                st.sidebar.info(f"⏰ Idade: {cache_age:.1f} min")
+            else:
+                st.sidebar.warning(f"⚠️ Dados antigos: {cache_age:.1f} min")
+            
+            # Botão para limpar cache da sessão
+            if st.sidebar.button("🗑️ Limpar Cache Sessão", help="Remove dados da sessão atual"):
+                st.session_state.cached_data = {}
+                st.session_state.cached_matriz_stoch = {}
+                st.session_state.data_timestamp = None
+                st.session_state.last_config = {}
+                st.session_state.updating_data = False
+                st.success("🗑️ Cache da sessão limpo!")
+                st.rerun()
+        else:
+            st.sidebar.warning("⚠️ Nenhum cache ativo")
+            st.sidebar.info("💡 Dados serão carregados na primeira execução")
+        
+        st.sidebar.subheader("💾 Cache Arquivos")
         col1, col2 = st.sidebar.columns(2)
         
         with col1:
@@ -331,10 +461,10 @@ class TradingDashboard:
                 self.data_manager.cleanup_cache()
                 st.success("Limpeza automática!")
         
-        # Informações do cache
+        # Informações do cache de arquivos
         cache_info = self.data_manager.get_cache_info()
         if cache_info.get('cache_enabled'):
-            st.sidebar.info(f"Cache: {cache_info.get('valid_files', 0)}/{cache_info.get('total_files', 0)} arquivos válidos")
+            st.sidebar.info(f"📁 Cache arquivos: {cache_info.get('valid_files', 0)}/{cache_info.get('total_files', 0)} válidos")
         
         # Opção para usar cache em caso de erro
         use_cache_fallback = st.sidebar.checkbox(
@@ -377,57 +507,160 @@ class TradingDashboard:
         with col4:
             st.metric("⚡ Delay (ms)", delay_between_requests)
         
-        # Coleta dados com rate limiting
-        with st.spinner("📡 Coletando dados em lotes para evitar rate limiting..."):
-            try:
-                # Monitora logs para detectar rate limiting
-                import logging
-                rate_limit_warnings = []
-                
-                # Captura logs de rate limiting
-                class RateLimitHandler(logging.Handler):
-                    def emit(self, record):
-                        if "Rate limit" in record.getMessage():
-                            rate_limit_warnings.append(record.getMessage())
-                
-                handler = RateLimitHandler()
-                binance_logger = logging.getLogger('src.api.binance_client')
-                binance_logger.addHandler(handler)
-                
-                all_data = self.get_data_with_brick_size(
-                    trading_pairs, intervals, brick_size, batch_size, delay_between_requests / 1000, use_cache_fallback, force_refresh
-                )
-                
-                # Remove handler
-                binance_logger.removeHandler(handler)
-                
-                # Mostra resultado
-                if rate_limit_warnings:
-                    st.warning(f"⚠️ {len(rate_limit_warnings)} avisos de rate limiting detectados. Considere aumentar o delay entre requisições.")
-                    with st.expander("Ver avisos de rate limiting"):
-                        for warning in rate_limit_warnings:
-                            st.text(warning)
-                else:
-                    st.success(f"✅ Dados coletados: {len(all_data)} pares processados!")
-                    
-            except Exception as e:
-                st.error(f"❌ Erro ao coletar dados: {e}")
-                
-                # Sugestões para resolver problemas
-                st.markdown("""
-                **💡 Sugestões para resolver problemas:**
-                - Aumente o delay entre requisições (slider na sidebar)
-                - Reduza o tamanho do lote (slider na sidebar)
-                - Verifique sua conexão com a internet
-                - Aguarde alguns minutos antes de tentar novamente
-                """)
-                
-                logger.error(f"Erro ao coletar dados: {e}")
-                return
+        # Coleta dados com cache inteligente
+        need_refresh = self.needs_data_refresh(trading_pairs, intervals, brick_size, use_atr, atr_period, force_refresh)
         
-        # Processa dados e calcula indicadores
-        with st.spinner("🔍 Calculando indicadores StochRSI..."):
-            matriz_stoch = self.process_data_matrix(all_data, intervals, brick_size, use_renko_always, use_atr, atr_period)
+        # Primeiro mostra dados em cache se existirem (para o usuário não ficar sem ver nada)
+        has_cached_data = st.session_state.cached_data and st.session_state.cached_matriz_stoch
+        
+        if has_cached_data and need_refresh:
+            # Mostra dados anteriores enquanto carrega novos
+            st.info("🔄 **Mostrando dados anteriores enquanto atualiza** - Filtros funcionam normalmente!")
+            all_data, matriz_stoch = self.get_cached_data()
+            
+            # Aplica os filtros nos dados atuais primeiro para o usuário ver
+            self.show_active_filters(stoch_filter)
+            matriz_original = matriz_stoch.copy()
+            matriz_stoch_filtered = self.apply_stoch_filter(matriz_stoch, stoch_filter, show_signals_only)
+            
+            # Mostra dados atuais enquanto atualiza
+            if stoch_filter.get('filter_timeframes'):
+                original_count = len(matriz_original)
+                filtered_count = len(matriz_stoch_filtered)
+                removed_count = original_count - filtered_count
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("📊 Total de pares", original_count)
+                with col2:
+                    st.metric("✅ Pares filtrados", filtered_count)
+                with col3:
+                    st.metric("❌ Pares removidos", removed_count)
+            
+            # Exibe tabela atual primeiro
+            st.subheader("📊 StochRSI %K - Todos os Pares (dados em cache)")
+            self.display_simple_table_content(matriz_stoch_filtered, intervals)
+            
+            # Adiciona um botão para atualizar manualmente
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("🔄 Atualizar Dados Agora", type="primary"):
+                    # Marca que vai atualizar
+                    st.session_state.updating_data = True
+                    st.rerun()
+            with col2:
+                st.info("💡 Use o botão 'Forçar Atualização' na sidebar para atualizar automaticamente")
+            
+            # Se foi marcado para atualizar, faz a atualização
+            if st.session_state.updating_data:
+                with st.spinner("📡 Atualizando dados da API..."):
+                    try:
+                        # Monitora logs para detectar rate limiting
+                        import logging
+                        rate_limit_warnings = []
+                        
+                        # Captura logs de rate limiting
+                        class RateLimitHandler(logging.Handler):
+                            def emit(self, record):
+                                if "Rate limit" in record.getMessage():
+                                    rate_limit_warnings.append(record.getMessage())
+                        
+                        handler = RateLimitHandler()
+                        binance_logger = logging.getLogger('src.api.binance_client')
+                        binance_logger.addHandler(handler)
+                        
+                        all_data_new = self.get_data_with_brick_size(
+                            trading_pairs, intervals, brick_size, batch_size, 
+                            delay_between_requests / 1000, use_cache_fallback, force_refresh
+                        )
+                        
+                        # Remove handler
+                        binance_logger.removeHandler(handler)
+                        
+                        # Processa dados e calcula indicadores
+                        matriz_stoch_new = self.process_data_matrix(all_data_new, intervals, brick_size, use_renko_always, use_atr, atr_period)
+                        
+                        # Armazena no cache
+                        self.cache_data(trading_pairs, intervals, brick_size, use_atr, atr_period, all_data_new, matriz_stoch_new)
+                        
+                        # Marca que terminou de atualizar
+                        st.session_state.updating_data = False
+                        
+                        # Mostra resultado da atualização
+                        if rate_limit_warnings:
+                            st.warning(f"⚠️ {len(rate_limit_warnings)} avisos de rate limiting durante atualização.")
+                        else:
+                            st.success(f"✅ Dados atualizados com sucesso: {len(all_data_new)} pares processados!")
+                        
+                        # Recarrega para mostrar novos dados
+                        st.rerun()
+                        
+                    except Exception as e:
+                        st.session_state.updating_data = False
+                        st.error(f"❌ Erro durante atualização: {e}")
+                        logger.error(f"Erro na atualização: {e}")
+            
+            # Para aqui para não processar novamente abaixo
+            return
+                
+        elif need_refresh:
+            with st.spinner("📡 Coletando novos dados da API..."):
+                try:
+                    # Monitora logs para detectar rate limiting
+                    import logging
+                    rate_limit_warnings = []
+                    
+                    # Captura logs de rate limiting
+                    class RateLimitHandler(logging.Handler):
+                        def emit(self, record):
+                            if "Rate limit" in record.getMessage():
+                                rate_limit_warnings.append(record.getMessage())
+                    
+                    handler = RateLimitHandler()
+                    binance_logger = logging.getLogger('src.api.binance_client')
+                    binance_logger.addHandler(handler)
+                    
+                    all_data = self.get_data_with_brick_size(
+                        trading_pairs, intervals, brick_size, batch_size, delay_between_requests / 1000, use_cache_fallback, force_refresh
+                    )
+                    
+                    # Remove handler
+                    binance_logger.removeHandler(handler)
+                    
+                    # Processa dados e calcula indicadores
+                    with st.spinner("🔍 Calculando indicadores StochRSI..."):
+                        matriz_stoch = self.process_data_matrix(all_data, intervals, brick_size, use_renko_always, use_atr, atr_period)
+                    
+                    # Armazena no cache
+                    self.cache_data(trading_pairs, intervals, brick_size, use_atr, atr_period, all_data, matriz_stoch)
+                    
+                    # Mostra resultado
+                    if rate_limit_warnings:
+                        st.warning(f"⚠️ {len(rate_limit_warnings)} avisos de rate limiting detectados. Considere aumentar o delay entre requisições.")
+                        with st.expander("Ver avisos de rate limiting"):
+                            for warning in rate_limit_warnings:
+                                st.text(warning)
+                    else:
+                        st.success(f"✅ Dados coletados e armazenados no cache: {len(all_data)} pares processados!")
+                        
+                except Exception as e:
+                    st.error(f"❌ Erro ao coletar dados: {e}")
+                    
+                    # Sugestões para resolver problemas
+                    st.markdown("""
+                    **💡 Sugestões para resolver problemas:**
+                    - Aumente o delay entre requisições (slider na sidebar)
+                    - Reduza o tamanho do lote (slider na sidebar)
+                    - Verifique sua conexão com a internet
+                    - Aguarde alguns minutos antes de tentar novamente
+                    """)
+                    
+                    logger.error(f"Erro ao coletar dados: {e}")
+                    return
+        else:
+            # Usa dados do cache
+            st.info("� **Usando dados do cache** - Alterações nos filtros são aplicadas instantaneamente!")
+            all_data, matriz_stoch = self.get_cached_data()
         
         # Mostra filtros ativos
         self.show_active_filters(stoch_filter)
@@ -462,13 +695,11 @@ class TradingDashboard:
         # Estatísticas resumidas
         self.display_summary_stats(matriz_stoch, intervals)
     
-    def display_simple_table(self, matriz_stoch, intervals):
-        """Exibe tabela simples com pares na primeira coluna e timeframes nas colunas seguintes."""
+    def display_simple_table_content(self, matriz_stoch, intervals):
+        """Exibe apenas o conteúdo da tabela simples (sem cabeçalho)."""
         if not matriz_stoch:
             st.warning("⚠️ Nenhum resultado para exibir após aplicar filtros.")
             return
-        
-        st.subheader("📊 StochRSI %K - Todos os Pares")
         
         # Cria dados para a tabela
         table_data = []
@@ -511,7 +742,7 @@ class TradingDashboard:
             return ""
         
         # Aplica estilo
-        styled_df = df.style.applymap(color_cells)
+        styled_df = df.style.map(color_cells)
         
         # Exibe tabela
         st.dataframe(styled_df, use_container_width=True, height=600)
@@ -525,6 +756,15 @@ class TradingDashboard:
         """)
         
         return df
+
+    def display_simple_table(self, matriz_stoch, intervals):
+        """Exibe tabela simples com pares na primeira coluna e timeframes nas colunas seguintes."""
+        if not matriz_stoch:
+            st.warning("⚠️ Nenhum resultado para exibir após aplicar filtros.")
+            return
+        
+        st.subheader("📊 StochRSI %K - Todos os Pares")
+        return self.display_simple_table_content(matriz_stoch, intervals)
     
     def show_active_filters(self, stoch_filter):
         """Mostra filtros ativos na interface."""
@@ -656,7 +896,7 @@ class TradingDashboard:
                 return "background-color: #F0E68C"
             return ""
         
-        styled_df = df_resultados.style.applymap(style_signal, subset=['Signal'])        
+        styled_df = df_resultados.style.map(style_signal, subset=['Signal'])        
         st.dataframe(styled_df, use_container_width=True)
         
         # Estatísticas resumidas
@@ -781,6 +1021,10 @@ class TradingDashboard:
         if not stoch_filter.get('filter_timeframes'):
             return matriz_stoch
         
+        # Mostra que está usando cache para filtros
+        if matriz_stoch == st.session_state.cached_matriz_stoch:
+            st.info("🚀 **Filtros aplicados instantaneamente** - Usando dados em cache!")
+        
         filtered_matriz = {}
         filter_timeframes = stoch_filter['filter_timeframes']
         
@@ -892,7 +1136,7 @@ class TradingDashboard:
             return ""
         
         # Aplica estilo
-        styled_df = df_matrix.style.applymap(color_cells)
+        styled_df = df_matrix.style.map(color_cells)
         
         # Exibe tabela
         st.dataframe(styled_df, use_container_width=True)
