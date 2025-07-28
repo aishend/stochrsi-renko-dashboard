@@ -1,31 +1,16 @@
-# 📊 Sistema de Trading Renko + StochRSI
+# Sistema de Trading Renko + StochRSI
 
-Sistema completo de análise técnica baseado em gráficos Renko e indicador StochRSI para trading de criptomoedas da Binance.
+Sistema completo de análise técnica baseado em gráficos Renko e indicador StochRSI para trading de criptomoedas.
 
-## 🚀 Características Principais
+## 🚀 Características
 
 - **Dashboard Web Interativo**: Interface moderna com Streamlit
-- **Múltiplos Pares**: Análise simultânea de centenas de pares de trading
-- **Múltiplos Timeframes**: Suporte para 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1w
+- **Múltiplos Pares**: Análise simultânea de vários pares de trading
+- **Múltiplos Timeframes**: Suporte para diferentes intervalos de tempo
 - **Indicadores Técnicos**: Renko + StochRSI integrados
-- **ATR Dinâmico**: Cálculo automático do brick size baseado na volatilidade
-- **Filtros Avançados**: Múltiplos filtros para StochRSI
 - **Cache Inteligente**: Sistema de cache para otimizar performance
-- **Rate Limiting**: Proteção contra rate limiting da API Binance
 - **Logging Completo**: Sistema de logs para monitoramento
 - **Arquitetura Modular**: Código bem organizado e extensível
-
-## 🎯 Modos de Operação
-
-- **Modo Padrão**: 20 pares principais
-- **Modo Teste**: 5 pares para desenvolvimento
-- **Modo Todos os Pares**: Análise completa de todos os pares disponíveis
-
-## 📈 Indicadores Implementados
-
-- **Renko Charts**: Gráficos filtrados por movimento de preço
-- **StochRSI**: Oscilador estocástico aplicado ao RSI
-- **ATR**: Average True Range para cálculo dinâmico de brick size
 
 ## 📁 Estrutura do Projeto
 
