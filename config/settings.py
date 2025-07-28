@@ -48,7 +48,19 @@ DASHBOARD_CONFIG = {
     'available_intervals': ['15m', '1h', '4h', '1d'],
     'default_days': None,  # Calculado automaticamente
     'max_pairs': 100,
-    'max_workers': 10
+    'max_workers': 10,
+    # Configurações de auto-refresh
+    'auto_refresh_enabled': True,
+    'auto_refresh_interval': 7200,  # 2 horas em segundos (2 * 60 * 60)
+    'auto_refresh_options': {
+        '30 minutos': 1800,
+        '1 hora': 3600,
+        '2 horas': 7200,
+        '4 horas': 14400,
+        '6 horas': 21600,
+        '12 horas': 43200,
+        '24 horas': 86400
+    }
 }
 
 # Configurações de dados
