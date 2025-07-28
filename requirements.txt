@@ -1,7 +1,8 @@
 # Dependências principais
 streamlit>=1.28.0
-pandas>=1.5.0
-numpy>=1.24.0
+pandas>=1.5.0,<2.3.0
+numpy>=1.24.0,<2.0.0
+pyarrow>=10.0.0,<15.0.0
 
 # API Binance
 python-binance==1.0.16
