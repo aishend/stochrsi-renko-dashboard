@@ -113,64 +113,6 @@ class TradingDashboard:
         
         # Mostra o modo atual
         self.show_mode_info()
-        
-        # Inicializa configurações persistentes
-        self.init_persistent_settings()
-    
-    def init_persistent_settings(self):
-        """Inicializa todas as configurações persistentes do usuário."""
-        # Auto-refresh settings
-        if 'user_auto_refresh_enabled' not in st.session_state:
-            st.session_state.user_auto_refresh_enabled = self.config.get('auto_refresh_enabled', True)
-        if 'user_refresh_interval' not in st.session_state:
-            st.session_state.user_refresh_interval = self.config.get('auto_refresh_interval', 7200)
-        
-        # Timeframes
-        if 'user_intervals' not in st.session_state:
-            st.session_state.user_intervals = self.config.get('default_intervals', ['15m', '1h', '4h', '1d'])
-        if 'user_filter_timeframes' not in st.session_state:
-            default_filter = ["1h", "4h"] if all(tf in st.session_state.user_intervals for tf in ["1h", "4h"]) else st.session_state.user_intervals[:2]
-            st.session_state.user_filter_timeframes = default_filter
-        
-        # Filtros StochRSI
-        if 'user_enable_above' not in st.session_state:
-            st.session_state.user_enable_above = False
-        if 'user_value_above' not in st.session_state:
-            st.session_state.user_value_above = 70
-        if 'user_enable_below' not in st.session_state:
-            st.session_state.user_enable_below = False
-        if 'user_value_below' not in st.session_state:
-            st.session_state.user_value_below = 30
-        if 'user_enable_extremos' not in st.session_state:
-            st.session_state.user_enable_extremos = False
-        if 'user_extremos_min' not in st.session_state:
-            st.session_state.user_extremos_min = 20
-        if 'user_extremos_max' not in st.session_state:
-            st.session_state.user_extremos_max = 80
-        if 'user_enable_intervalo' not in st.session_state:
-            st.session_state.user_enable_intervalo = False
-        if 'user_intervalo_min' not in st.session_state:
-            st.session_state.user_intervalo_min = 40
-        if 'user_intervalo_max' not in st.session_state:
-            st.session_state.user_intervalo_max = 60
-        
-        # Outras configurações
-        if 'user_show_signals_only' not in st.session_state:
-            st.session_state.user_show_signals_only = False
-        if 'user_delay_between_requests' not in st.session_state:
-            st.session_state.user_delay_between_requests = 0.1
-        if 'user_batch_size' not in st.session_state:
-            st.session_state.user_batch_size = 10
-        if 'user_use_atr' not in st.session_state:
-            st.session_state.user_use_atr = True
-        if 'user_atr_period' not in st.session_state:
-            st.session_state.user_atr_period = 14
-        if 'user_brick_size' not in st.session_state:
-            st.session_state.user_brick_size = 0.001
-        if 'user_use_renko_always' not in st.session_state:
-            st.session_state.user_use_renko_always = False
-        if 'user_use_cache_fallback' not in st.session_state:
-            st.session_state.user_use_cache_fallback = True
     
     def needs_data_refresh(self, trading_pairs, intervals, brick_size, use_atr, atr_period, force_refresh):
         """Verifica se é necessário atualizar os dados."""
@@ -318,49 +260,15 @@ class TradingDashboard:
         # Seção de Auto-Refresh
         st.sidebar.subheader("⏰ Auto-Refresh")
         
-        # Inicializa configurações no session_state se não existirem
-        if 'user_auto_refresh_enabled' not in st.session_state:
-            st.session_state.user_auto_refresh_enabled = self.config.get('auto_refresh_enabled', True)
-        
-        if 'user_refresh_interval' not in st.session_state:
-            st.session_state.user_refresh_interval = self.config.get('auto_refresh_interval', 7200)
-        
-        # Toggle para ativar/desativar auto-refresh (usa session_state)
+        # Toggle para ativar/desativar auto-refresh
         auto_refresh_enabled = st.sidebar.checkbox(
             "🔄 Ativar Atualização Automática",
-            value=st.session_state.user_auto_refresh_enabled,
-            help="Atualiza os dados automaticamente no intervalo selecionado"
+            value=self.config.get('auto_refresh_enabled', True),
+            help="Atualiza os dados automaticamente a cada 2 horas"
         )
         
-        # Atualiza session_state com a escolha do usuário
-        st.session_state.user_auto_refresh_enabled = auto_refresh_enabled
-        
-        # Seletor de intervalo de auto-refresh
-        refresh_options = self.config.get('auto_refresh_options', {
-            '30 minutos': 1800,
-            '1 hora': 3600,
-            '2 horas': 7200,
-            '4 horas': 14400,
-            '6 horas': 21600,
-            '12 horas': 43200,
-            '24 horas': 86400
-        })
-        
-        # Encontra o label atual baseado no session_state
-        current_label = next((k for k, v in refresh_options.items() if v == st.session_state.user_refresh_interval), '2 horas')
-        
-        refresh_interval_label = st.sidebar.selectbox(
-            "⏱️ Intervalo de Atualização:",
-            options=list(refresh_options.keys()),
-            index=list(refresh_options.keys()).index(current_label),
-            help="Escolha com que frequência os dados devem ser atualizados automaticamente"
-        )
-        
-        # Atualiza session_state com a escolha do usuário
-        st.session_state.user_refresh_interval = refresh_options[refresh_interval_label]
-        
-        # Usa o valor do session_state
-        refresh_interval = st.session_state.user_refresh_interval
+        # Intervalo fixo de 2 horas
+        refresh_interval = 7200  # 2 horas em segundos
         
         # Sistema de auto-refresh
         if auto_refresh_enabled:
@@ -399,22 +307,9 @@ class TradingDashboard:
         
         # Informação sobre funcionamento
         if auto_refresh_enabled:
-            st.sidebar.success(f"✅ Auto-refresh ativo: {refresh_interval_label}")
+            st.sidebar.success("✅ Auto-refresh ativo: a cada 2 horas")
         else:
             st.sidebar.info("⏸️ Auto-refresh desativado")
-        
-        # Botão para resetar configurações
-        if st.sidebar.button("🔄 Resetar Configurações", help="Volta para as configurações padrão"):
-            # Reseta todas as configurações para padrões
-            self.init_persistent_settings()
-            # Remove timestamp para forçar refresh completo
-            if 'last_refresh_time' in st.session_state:
-                del st.session_state.last_refresh_time
-            st.sidebar.success("✅ Configurações resetadas!")
-            st.rerun()
-        
-        st.sidebar.info("💡 Os filtros são aplicados instantaneamente usando cache")
-        st.sidebar.info("💾 Suas configurações são mantidas durante a sessão")
         
         # Informação sobre auto-refresh
         st.sidebar.info("� Os filtros são aplicados instantaneamente usando cache")
@@ -425,11 +320,8 @@ class TradingDashboard:
         intervals = st.sidebar.multiselect(
             "Intervalos de tempo:",
             self.config['available_intervals'],
-            default=st.session_state.user_intervals
+            default=self.config['default_intervals']
         )
-        
-        # Atualiza session_state
-        st.session_state.user_intervals = intervals
         
         # Seção de filtros StochRSI
         st.sidebar.subheader("🎯 Filtros StochRSI %K")
@@ -439,84 +331,45 @@ class TradingDashboard:
         filter_timeframes = st.sidebar.multiselect(
             "Selecione os timeframes para aplicar os filtros:",
             intervals,
-            default=[tf for tf in st.session_state.user_filter_timeframes if tf in intervals],
+            default=["1h", "4h"] if all(tf in intervals for tf in ["1h", "4h"]) else intervals[:2],
             help="Timeframes que serão usados nos filtros abaixo"
         )
         
-        # Atualiza session_state
-        st.session_state.user_filter_timeframes = filter_timeframes
-        
         # Filtro: Todos Acima
         st.sidebar.subheader("📈 Filtro Geral - Todos Acima")
-        enable_above = st.sidebar.checkbox(
-            "Ativar filtro 'Todos acima'", 
-            value=st.session_state.user_enable_above
-        )
-        st.session_state.user_enable_above = enable_above
-        
+        enable_above = st.sidebar.checkbox("Ativar filtro 'Todos acima'", key="enable_above")
         if enable_above:
-            value_above = st.sidebar.slider(
-                "Valor mínimo para os selecionados", 
-                0, 100, 
-                st.session_state.user_value_above
-            )
-            st.session_state.user_value_above = value_above
+            value_above = st.sidebar.slider("Valor mínimo para os selecionados", 0, 100, 70, key="all_above")
         else:
             value_above = None
         
         # Filtro: Todos Abaixo
         st.sidebar.subheader("📉 Filtro Geral - Todos Abaixo")
-        enable_below = st.sidebar.checkbox(
-            "Ativar filtro 'Todos abaixo'", 
-            value=st.session_state.user_enable_below
-        )
-        st.session_state.user_enable_below = enable_below
-        
+        enable_below = st.sidebar.checkbox("Ativar filtro 'Todos abaixo'", key="enable_below")
         if enable_below:
-            value_below = st.sidebar.slider(
-                "Valor máximo para os selecionados", 
-                0, 100, 
-                st.session_state.user_value_below
-            )
-            st.session_state.user_value_below = value_below
+            value_below = st.sidebar.slider("Valor máximo para os selecionados", 0, 100, 30, key="all_below")
         else:
             value_below = None
         
         # Filtro: Extremos
         st.sidebar.subheader("🎯 Filtro Extremos (abaixo/acima)")
-        enable_extremos = st.sidebar.checkbox(
-            "Ativar filtro de extremos", 
-            value=st.session_state.user_enable_extremos
-        )
-        st.session_state.user_enable_extremos = enable_extremos
-        
+        enable_extremos = st.sidebar.checkbox("Ativar filtro de extremos", key="enable_extremos")
         if enable_extremos:
             extremos_min, extremos_max = st.sidebar.slider(
                 "Defina os valores dos extremos (mínimo e máximo)",
-                0, 100, 
-                (st.session_state.user_extremos_min, st.session_state.user_extremos_max)
+                0, 100, (30, 70), key="extremos_range"
             )
-            st.session_state.user_extremos_min = extremos_min
-            st.session_state.user_extremos_max = extremos_max
         else:
             extremos_min = extremos_max = None
         
         # Filtro: Intervalo Personalizado
         st.sidebar.subheader("🟩 Filtro Intervalo Personalizado (meio)")
-        enable_intervalo = st.sidebar.checkbox(
-            "Ativar filtro de intervalo personalizado", 
-            value=st.session_state.user_enable_intervalo
-        )
-        st.session_state.user_enable_intervalo = enable_intervalo
-        
+        enable_intervalo = st.sidebar.checkbox("Ativar filtro de intervalo personalizado", key="enable_intervalo")
         if enable_intervalo:
             intervalo_min, intervalo_max = st.sidebar.slider(
                 "Defina o intervalo central (mínimo e máximo)",
-                0, 100, 
-                (st.session_state.user_intervalo_min, st.session_state.user_intervalo_max)
+                0, 100, (30, 70), key="intervalo_range"
             )
-            st.session_state.user_intervalo_min = intervalo_min
-            st.session_state.user_intervalo_max = intervalo_max
         else:
             intervalo_min = intervalo_max = None
         
@@ -536,11 +389,7 @@ class TradingDashboard:
         }
         
         # Mostrar apenas sinais
-        show_signals_only = st.sidebar.checkbox(
-            "Mostrar apenas sinais importantes", 
-            value=st.session_state.user_show_signals_only
-        )
-        st.session_state.user_show_signals_only = show_signals_only
+        show_signals_only = st.sidebar.checkbox("Mostrar apenas sinais importantes", value=False)
         
         # Seção de parâmetros
         st.sidebar.subheader("🔧 Parâmetros")
@@ -554,21 +403,19 @@ class TradingDashboard:
             "Delay entre requisições (ms):",
             min_value=50,  # Reduzido para aproveitar connection pool maior
             max_value=2000,
-            value=int(st.session_state.user_delay_between_requests * 1000),
-            step=10,
-            help="Controla o intervalo entre as requisições para evitar rate limiting"
-        ) / 1000  # Converte de ms para segundos
-        st.session_state.user_delay_between_requests = delay_between_requests
+            value=300,  # Reduzido para ser mais eficiente
+            step=50,
+            help="Aumentar para evitar rate limiting da API (otimizado para connection pool de 50)"
+        )
         
         batch_size = st.sidebar.slider(
             "Tamanho do lote:",
             min_value=5,
             max_value=50,
-            value=st.session_state.user_batch_size,  # Usa valor do session_state
+            value=30,  # Aumentado para aproveitar connection pool maior
             step=5,
-            help="Quantos símbolos processar por vez (otimizado para connection pool de 50)"
+            help="Número de pares processados por vez (otimizado para connection pool de 50)"
         )
-        st.session_state.user_batch_size = batch_size
         
         # Dicas de otimização
         requests_per_minute = (60000 / delay_between_requests) * batch_size if delay_between_requests > 0 else 0
@@ -589,21 +436,19 @@ class TradingDashboard:
         # Opção para usar ATR dinâmico
         use_atr = st.sidebar.checkbox(
             "Usar ATR dinâmico para brick size",
-            value=st.session_state.user_use_atr,
+            value=True,
             help="Calcula o brick size automaticamente baseado no ATR (Average True Range)"
         )
-        st.session_state.user_use_atr = use_atr
         
         if use_atr:
             atr_period = st.sidebar.slider(
                 "Período do ATR:",
                 min_value=7,
                 max_value=30,
-                value=st.session_state.user_atr_period,
+                value=14,
                 step=1,
-                help="Número de períodos para calcular o Average True Range"
+                help="Período para cálculo do ATR (padrão: 14 períodos)"
             )
-            st.session_state.user_atr_period = atr_period
             
             st.sidebar.info("📊 Brick size será calculado automaticamente baseado na volatilidade")
             brick_size = None  # Será calculado dinamicamente
@@ -612,20 +457,18 @@ class TradingDashboard:
                 "Tamanho do tijolo Renko:",
                 min_value=50,
                 max_value=2000,
-                value=int(st.session_state.user_brick_size * 1000000),  # Converte para micros
+                value=200,
                 step=50,
-                help="Tamanho fixo do tijolo em micros (1000 = 0.001)"
-            ) / 1000000  # Converte de volta para decimais
-            st.session_state.user_brick_size = brick_size
+                help="Tamanho do tijolo em pontos para cálculo do Renko"
+            )
             atr_period = 14  # Valor padrão não usado
         
         # Opção para usar sempre Renko
         use_renko_always = st.sidebar.checkbox(
             "Usar sempre Renko para todos os timeframes",
-            value=st.session_state.user_use_renko_always,
+            value=True,
             help="Quando ativado, usa Renko para todos os timeframes (recomendado)"
         )
-        st.session_state.user_use_renko_always = use_renko_always
         
         # Cache controls
         st.sidebar.subheader("💾 Cache de Sessão")
@@ -680,10 +523,9 @@ class TradingDashboard:
         # Opção para usar cache em caso de erro
         use_cache_fallback = st.sidebar.checkbox(
             "Usar cache como fallback",
-            value=st.session_state.user_use_cache_fallback,
-            help="Usa dados do cache em caso de falha na API"
+            value=True,
+            help="Usa dados em cache (mesmo expirados) se API falhar"
         )
-        st.session_state.user_use_cache_fallback = use_cache_fallback
         
         return trading_pairs, intervals, brick_size, stoch_filter, show_signals_only, use_renko_always, delay_between_requests, batch_size, use_cache_fallback, use_atr, atr_period, force_refresh
     
@@ -727,7 +569,6 @@ class TradingDashboard:
         
         if has_cached_data and need_refresh:
             # Mostra dados anteriores enquanto carrega novos
-            st.info("🔄 **Mostrando dados anteriores enquanto atualiza** - Filtros funcionam normalmente!")
             all_data, matriz_stoch = self.get_cached_data()
             
             # Aplica os filtros nos dados atuais primeiro para o usuário ver
@@ -1232,10 +1073,6 @@ class TradingDashboard:
         """Aplica filtros baseados no StochRSI %K seguindo o exemplo fornecido."""
         if not stoch_filter.get('filter_timeframes'):
             return matriz_stoch
-        
-        # Mostra que está usando cache para filtros
-        if matriz_stoch == st.session_state.cached_matriz_stoch:
-            st.info("🚀 **Filtros aplicados instantaneamente** - Usando dados em cache!")
         
         filtered_matriz = {}
         filter_timeframes = stoch_filter['filter_timeframes']
